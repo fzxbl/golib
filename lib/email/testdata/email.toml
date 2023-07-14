@@ -1,0 +1,17 @@
+[SendServer]
+Adress = "mail.xxx"
+Port = 25
+UseTLS = false
+
+[ReceiveServer]
+Adress = "mail.xxx"
+Port = 993
+UseTLS = true
+
+[Auth]
+User = "xxx@example.com"
+Passwd = "xxxx"
+
+[MailBox]
+SentBox = "发件箱"
+InBox = "收件箱"

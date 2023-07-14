@@ -1,0 +1,6 @@
+Filename = "${env.LogDir}/a.log"
+MaxSize = 10 # 单个日志文件的最大尺寸（MB）
+MaxBackups = 3 # 保留的日志文件数量
+MaxAge = 28 # 日志文件（天）的最大生命周期
+AddSource = true
+debug = true
