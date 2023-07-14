@@ -31,15 +31,29 @@ type Config struct {
 	Auth          Auth
 	MailBox       MailBox
 }
+type ClientMode uint8
 
-func MustInitClient(filepath string) (cli Client) {
+const (
+	// 仅接收邮件
+	ClientModeReceive ClientMode = iota + 1
+	// 仅发送邮件，无法同步发件箱
+	ClientModeSend ClientMode = iota + 1
+	// 发送和接收邮件，可同步发件箱
+	ClientModeReceiveAndSend ClientMode = iota + 1
+)
+
+func (cli *Client) MustInit(confPath string, mode ClientMode) {
 	var cfg Config
-	iconf.MustParseToml(filepath, &cfg)
-	smtpCli, imapCli := mustInitSmtpImap(cfg)
+	iconf.MustParseToml(confPath, &cfg)
 	cli.cfg = cfg
-	cli.smtpClient = smtpCli
-	cli.imapClient = imapCli
-	return
+	if mode&1 == 1 {
+		imapCli := mustInitImap(cfg)
+		cli.imapClient = imapCli
+	}
+	if mode&2 == 1 {
+		smtpClient := mustInitSmtp(cfg)
+		cli.smtpClient = smtpClient
+	}
 }
 
 // mustInitSmtp 初始化SMTP服务，使用gomail.NewMessage()构造msg,使用client.DialAndSend(msg)发送
@@ -57,21 +71,6 @@ func mustInitImap(cfg Config) (client *imapclient.Client) {
 		panic(err)
 	}
 	if err := client.Login(cfg.Auth.User, cfg.Auth.Passwd).Wait(); err != nil {
-		panic(err)
-	}
-	return
-}
-
-// mustInitSmtpImap 同时初始化SMTP和Imap服务，使用完成后务必调用imapClient.Logout()
-func mustInitSmtpImap(cfg Config) (smtpClient *gomail.Dialer, imapClient *imapclient.Client) {
-	smtpClient = gomail.NewDialer(cfg.SendServer.Adress, cfg.SendServer.Port, cfg.Auth.User, cfg.Auth.Passwd)
-	smtpClient.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	var err error
-	imapClient, err = imapclient.DialTLS(cfg.ReceiveServer.Adress+":"+strconv.Itoa(cfg.ReceiveServer.Port), nil)
-	if err != nil {
-		panic(err)
-	}
-	if err := imapClient.Login(cfg.Auth.User, cfg.Auth.Passwd).Wait(); err != nil {
 		panic(err)
 	}
 	return

@@ -6,18 +6,20 @@ import (
 )
 
 func Test_Send(t *testing.T) {
-	cli := MustInitClient("./testdata/email.toml")
+	var cli Client
+	cli.MustInit("./testdata/email.toml", ClientModeReceiveAndSend)
 	msg := Message{
 		From:    cli.cfg.Auth.User,
-		To:      "luckygj@foxmail.com",
+		To:      "xxx@xxmail.com",
 		Subject: "This is a test",
 		Body:    "hello, world",
 	}
-	err := cli.Send(msg)
+	err := cli.Send(msg, true)
 	fmt.Println(err)
 }
 
 func Test_MustInitClient(t *testing.T) {
-	cli := MustInitClient("./testdata/email.toml")
+	var cli Client
+	cli.MustInit("./testdata/email.toml", ClientModeReceiveAndSend)
 	fmt.Println(cli)
 }

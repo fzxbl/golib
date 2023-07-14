@@ -7,26 +7,22 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-type ClientIter interface {
-	Send() error
-}
-
 type Client struct {
 	smtpClient *gomail.Dialer
 	imapClient *imapclient.Client
 	cfg        Config
 }
 
-func (c Client) Send(m Message) (err error) {
-	defer c.imapClient.Logout()
-	msg1 := m.CreateGoMailMessage()
-	err = c.smtpClient.DialAndSend(msg1)
-	if err != nil {
+// Send syncSentBox是否同步到发件箱
+func (c Client) Send(m Message, syncSentBox bool) (err error) {
+	sendMsg := m.CreateGoMailMessage()
+	err = c.smtpClient.DialAndSend(sendMsg)
+	if err != nil || !syncSentBox || c.imapClient == nil {
 		return
 	}
-	msg2 := m.CreateRFC2822Message()
-	data := []byte(msg2)
-
+	defer c.imapClient.Logout()
+	archivedMsg := m.CreateRFC2822Message()
+	data := []byte(archivedMsg)
 	appendCmd := c.imapClient.Append(c.cfg.MailBox.SentBox, int64(len(data)), nil)
 	if _, err = appendCmd.Write(data); err != nil {
 		err = fmt.Errorf("failed to write message: %w", err)
