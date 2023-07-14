@@ -3,12 +3,12 @@ package idb
 // Support MySQL, PostgreSQL, SQlite, SQL Server
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/BurntSushi/toml"
-
+	// 一个不基于cgo的库
+	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -17,10 +17,12 @@ import (
 const (
 	dbMySQL    = "mysql"
 	dbPostgres = "postgres"
+	dbSQLite   = "sqlite"
 )
 
 type Config struct {
-	DatabaseType          string `desc:"mysql|postgres"`
+	DatabaseType          string `desc:"mysql|postgres|sqlite"`
+	DatabaseFile          string `desc:"sqlite专用字段"`
 	Host                  string
 	Port                  int
 	User                  string
@@ -42,16 +44,22 @@ func parseConfig(filename string) (config Config) {
 	return
 }
 
-func MustInit(cfgFile string) *sql.DB {
-	cfg := parseConfig(cfgFile)
-	var db *gorm.DB
+func MustInit(cfgFilePath string) (db *gorm.DB) {
+	cfg := parseConfig(cfgFilePath)
+	var skip bool
 	switch cfg.DatabaseType {
 	case dbMySQL:
 		db = initMySQL(cfg)
 	case dbPostgres:
 		db = initPostgres(cfg)
+	case dbSQLite:
+		db = initSQLite(cfg)
+		skip = true
 	default:
 		panic(fmt.Errorf("invalid database type: %s", cfg.DatabaseType))
+	}
+	if skip {
+		return
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -65,10 +73,19 @@ func MustInit(cfgFile string) *sql.DB {
 
 	// SetConnMaxLifetime 设置了连接可复用的最大时间。
 	sqlDB.SetConnMaxLifetime(time.Minute * time.Duration(cfg.ConnMaxLifetimeMinute))
-	return sqlDB
+	return
 
 }
 
+func initSQLite(cfg Config) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(cfg.DatabaseFile), &gorm.Config{})
+
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	return db
+}
 func initMySQL(cfg Config) *gorm.DB {
 	var parseTime string
 	if cfg.ParseTime {
@@ -76,7 +93,7 @@ func initMySQL(cfg Config) *gorm.DB {
 	} else {
 		parseTime = "False"
 	}
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=%s&loc=%s",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=%s",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.Charset, parseTime, cfg.TimeZone)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {

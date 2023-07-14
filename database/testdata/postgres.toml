@@ -1,0 +1,7 @@
+DatabaseType = "postgres"
+Host = "localhost"
+Port = 5432
+User = "postgres"
+Password = "test1234"
+DBName = "postgres"
+SSLMode = "disable"
