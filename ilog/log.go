@@ -1,8 +1,6 @@
 package ilog
 
 import (
-	"os"
-
 	iconf "github.com/fzxbl/golib/iconf"
 	ienv "github.com/fzxbl/golib/ienv"
 
@@ -45,7 +43,7 @@ type Config struct {
 }
 
 func MustInitFromFile(confPath string) (logger *slog.Logger) {
-	cfg := MustLoadConfig(confPath)
+	cfg := mustLoadConfig(confPath)
 	// 设置日志切割选项
 	lj := &lumberjack.Logger{
 		Filename:   cfg.Filename,
@@ -70,17 +68,8 @@ func InitFromConfig(cfg Config) (logger *slog.Logger) {
 }
 
 // 加载配置文件
-func MustLoadConfig(filePath string) (v Config) {
+func mustLoadConfig(filePath string) (v Config) {
 	iconf.MustParseToml(filePath, &v)
-	realFilename := os.Expand(v.Filename, func(k string) (v string) {
-		switch k {
-		case "env.LogDir":
-			v = ienv.LogDir()
-		default:
-			v = k
-		}
-		return
-	})
-	v.Filename = realFilename
+	v.Filename = ienv.EnvExpand(v.Filename)
 	return
 }

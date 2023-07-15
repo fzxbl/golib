@@ -28,9 +28,26 @@ func LogDir() string {
 	return logDir
 }
 
+func EnvExpand(source string) (target string) {
+	target = os.Expand(source, func(k string) (v string) {
+		switch k {
+		case "env.LogDir":
+			v = logDir
+		case "env.ConfDir":
+			v = confDir
+		case "env.DataDir":
+			v = dataDir
+		default:
+			v = k
+		}
+		return
+	})
+	return
+}
+
 // init方法不需要调用，程序执行前会自动执行，在main函数之前运行
 func init() {
-	rootDir = autoDetect()
+	rootDir = autoDetectRootDir()
 	confDir = path.Join(rootDir, "conf")
 	dataDir = path.Join(rootDir, "data")
 	logDir = path.Join(rootDir, "log")
@@ -59,7 +76,7 @@ func findDirMatch(baseDir string, fileNames []string) (dir string, err error) {
 	return "", errNotFound
 }
 
-func autoDetect() string {
+func autoDetectRootDir() string {
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)

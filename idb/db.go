@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/fzxbl/golib/ienv"
+
 	// 一个不基于cgo的库
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
@@ -41,6 +43,8 @@ func parseConfig(filename string) (config Config) {
 	if _, err := toml.DecodeFile(filename, &config); err != nil {
 		panic(err)
 	}
+	// 针对SQLite配置做环境扩展
+	config.DatabaseFile = ienv.EnvExpand(config.DatabaseFile)
 	return
 }
 
