@@ -5,6 +5,7 @@ package idb
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -49,7 +50,7 @@ func parseConfig(filename string) (config Config) {
 	return
 }
 
-func MustInit(cfgFilePath string) (db *gorm.DB, close io.Closer) {
+func MustInit(cfgFilePath string) (db *gorm.DB, closer io.Closer) {
 	cfg := parseConfig(cfgFilePath)
 	var skip bool
 	switch cfg.DatabaseType {
@@ -67,7 +68,7 @@ func MustInit(cfgFilePath string) (db *gorm.DB, close io.Closer) {
 	if err != nil {
 		panic(err)
 	}
-	close = sqlDB
+	closer = sqlDB
 	if skip {
 		return
 	}
@@ -85,8 +86,15 @@ func MustInit(cfgFilePath string) (db *gorm.DB, close io.Closer) {
 }
 
 func initSQLite(cfg Config) *gorm.DB {
+	_, err := os.Stat(cfg.DatabaseFile)
+	if os.IsNotExist(err) {
+		file, err := os.Create(cfg.DatabaseFile)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+	}
 	db, err := gorm.Open(sqlite.Open(cfg.DatabaseFile), &gorm.Config{})
-
 	if err != nil {
 		panic("failed to connect database")
 	}
