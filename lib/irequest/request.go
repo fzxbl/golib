@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,7 +21,7 @@ func GetURLWithUnmarshal(url string, timeout time.Duration, resultContainer inte
 	}
 	defer resp.Body.Close()
 	var ret []byte
-	if ret, err = ioutil.ReadAll(resp.Body); err != nil {
+	if ret, err = io.ReadAll(resp.Body); err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -42,7 +41,7 @@ func GetURLRaw(url string, timeout time.Duration) (ret []byte, err error) {
 		return
 	}
 	defer resp.Body.Close()
-	if ret, err = ioutil.ReadAll(resp.Body); err != nil {
+	if ret, err = io.ReadAll(resp.Body); err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -60,7 +59,7 @@ func PostURLWithUnmarshal(url, contentType string, body io.Reader, timeout time.
 	}
 	defer resp.Body.Close()
 	var ret []byte
-	if ret, err = ioutil.ReadAll(resp.Body); err != nil {
+	if ret, err = io.ReadAll(resp.Body); err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -79,7 +78,7 @@ func PostURLRaw(url, contentType string, body io.Reader, timeout time.Duration) 
 		return
 	}
 	defer resp.Body.Close()
-	if ret, err = ioutil.ReadAll(resp.Body); err != nil {
+	if ret, err = io.ReadAll(resp.Body); err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -97,7 +96,7 @@ func HTTPDoRaw(req *http.Request, timeout time.Duration) (ret []byte, err error)
 		return
 	}
 	defer resp.Body.Close()
-	if ret, err = ioutil.ReadAll(resp.Body); err != nil {
+	if ret, err = io.ReadAll(resp.Body); err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -107,15 +106,16 @@ func HTTPDoRaw(req *http.Request, timeout time.Duration) (ret []byte, err error)
 }
 
 // HTTPDoWithUnmarshal 完成请求，将返回内容存入提供的container
-func HTTPDoWithUnmarshal(url, contentType string, body io.Reader, timeout time.Duration, resultContainer interface{}) (err error) {
-	client := http.Client{Timeout: timeout}
+func HTTPDoWithUnmarshal(req *http.Request, timeout time.Duration, resultContainer interface{}) (err error) {
+	client := &http.Client{Timeout: timeout}
 	var resp *http.Response
-	if resp, err = client.Post(url, contentType, body); err != nil {
+	resp, err = client.Do(req)
+	if err != nil {
 		return
 	}
 	defer resp.Body.Close()
 	var ret []byte
-	if ret, err = ioutil.ReadAll(resp.Body); err != nil {
+	if ret, err = io.ReadAll(resp.Body); err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
