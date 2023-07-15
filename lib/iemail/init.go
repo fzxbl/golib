@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/emersion/go-imap/v2/imapclient"
-	iconf "github.com/fzxbl/golib/conf"
+	iconf "github.com/fzxbl/golib/iconf"
 	"gopkg.in/gomail.v2"
 )
 

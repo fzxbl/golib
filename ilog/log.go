@@ -3,8 +3,8 @@ package ilog
 import (
 	"os"
 
-	iconf "github.com/fzxbl/golib/conf"
-	ienv "github.com/fzxbl/golib/env"
+	iconf "github.com/fzxbl/golib/iconf"
+	ienv "github.com/fzxbl/golib/ienv"
 
 	"github.com/natefinch/lumberjack"
 	"golang.org/x/exp/slog"
