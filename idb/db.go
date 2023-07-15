@@ -4,6 +4,7 @@ package idb
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -48,7 +49,7 @@ func parseConfig(filename string) (config Config) {
 	return
 }
 
-func MustInit(cfgFilePath string) (db *gorm.DB) {
+func MustInit(cfgFilePath string) (db *gorm.DB, close io.Closer) {
 	cfg := parseConfig(cfgFilePath)
 	var skip bool
 	switch cfg.DatabaseType {
@@ -62,12 +63,13 @@ func MustInit(cfgFilePath string) (db *gorm.DB) {
 	default:
 		panic(fmt.Errorf("invalid database type: %s", cfg.DatabaseType))
 	}
-	if skip {
-		return
-	}
 	sqlDB, err := db.DB()
 	if err != nil {
 		panic(err)
+	}
+	close = sqlDB
+	if skip {
+		return
 	}
 	// SetMaxIdleConns 用于设置连接池中空闲连接的最大数量。
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
@@ -77,6 +79,7 @@ func MustInit(cfgFilePath string) (db *gorm.DB) {
 
 	// SetConnMaxLifetime 设置了连接可复用的最大时间。
 	sqlDB.SetConnMaxLifetime(time.Minute * time.Duration(cfg.ConnMaxLifetimeMinute))
+
 	return
 
 }

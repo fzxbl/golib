@@ -31,6 +31,8 @@ func LogDir() string {
 func EnvExpand(source string) (target string) {
 	target = os.Expand(source, func(k string) (v string) {
 		switch k {
+		case "env.RootDir":
+			v = rootDir
 		case "env.LogDir":
 			v = logDir
 		case "env.ConfDir":

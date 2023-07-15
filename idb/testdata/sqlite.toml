@@ -1,2 +1,2 @@
 DatabaseType = "sqlite"
-DatabaseFile = "${env.DataDir}/sqlite.db"
+DatabaseFile = "${env.RootDir}/idb/testdata/sqlite.db"

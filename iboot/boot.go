@@ -7,12 +7,12 @@ import (
 var closeFns []func() error
 
 // TryRegisterCloser 注册 close 方法
-func TryRegisterCloser(comp interface{}) {
-	if c, ok := comp.(io.Closer); ok {
+func TryRegisterCloser(close interface{}) {
+	if c, ok := close.(io.Closer); ok {
 		closeFns = append(closeFns, c.Close)
 		return
 	}
-	if fn, ok := comp.(func() error); ok {
+	if fn, ok := close.(func() error); ok {
 		closeFns = append(closeFns, fn)
 	}
 }

@@ -15,7 +15,7 @@ type Product struct {
 }
 
 func Test_MustInit(t *testing.T) {
-	db := MustInit("./testdata/sqlite.toml")
+	db, close := MustInit("./testdata/sqlite.toml")
 	// db := MustInit("./testdata/postgres.toml")
 	db.AutoMigrate(&Product{})
 	// 插入内容
@@ -28,4 +28,6 @@ func Test_MustInit(t *testing.T) {
 	fmt.Println(product)
 	db.First(&product, "code = ?", "D42") // find product with code D42
 	fmt.Println(product)
+	err := close.Close()
+	fmt.Println(err)
 }

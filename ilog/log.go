@@ -42,6 +42,7 @@ type Config struct {
 	AddSource bool
 }
 
+// MustInitFromFile slog.Logger未实现Close方法
 func MustInitFromFile(confPath string) (logger *slog.Logger) {
 	cfg := mustLoadConfig(confPath)
 	// 设置日志切割选项
@@ -55,6 +56,7 @@ func MustInitFromFile(confPath string) (logger *slog.Logger) {
 	return
 }
 
+// InitFromConfig slog.Logger未实现Close方法
 func InitFromConfig(cfg Config) (logger *slog.Logger) {
 	// 设置日志切割选项
 	lj := &lumberjack.Logger{
