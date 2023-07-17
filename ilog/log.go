@@ -51,6 +51,7 @@ func MustInitFromFile(confPath string) (logger *slog.Logger) {
 		MaxSize:    cfg.MaxSize,    // 单个日志文件的最大尺寸（MB）
 		MaxBackups: cfg.MaxBackups, // 保留的日志文件数量
 		MaxAge:     cfg.MaxAge,     // 日志文件（天）的最大生命周期
+		LocalTime:  cfg.LocalTime,
 	}
 	logger = slog.New(slog.NewJSONHandler(lj, &slog.HandlerOptions{AddSource: cfg.AddSource}))
 	return

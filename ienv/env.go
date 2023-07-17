@@ -53,6 +53,15 @@ func init() {
 	confDir = path.Join(rootDir, "conf")
 	dataDir = path.Join(rootDir, "data")
 	logDir = path.Join(rootDir, "log")
+	if err := os.MkdirAll(confDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+	if err := os.MkdirAll(dataDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
+		panic(err)
+	}
 }
 
 var errNotFound = errors.New("cannot found")

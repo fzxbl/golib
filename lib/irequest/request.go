@@ -2,147 +2,129 @@ package irequest
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
 )
 
-// GetURLWithUnmarshal GET请求，将返回内容存入提供的container
-func GetURLWithUnmarshal(url string, timeout time.Duration, resultContainer interface{}) (err error) {
-	client := http.Client{Timeout: timeout}
-	var resp *http.Response
-	if resp, err = client.Get(url); err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	var ret []byte
-	if ret, err = io.ReadAll(resp.Body); err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("http status is %d,content is %s", resp.StatusCode, string(ret))
-		return
-	}
-	err = jsoniter.Unmarshal(ret, resultContainer)
-	return
+type Response struct {
+	Status     string
+	StatusCode int
+	RawContent []byte
+	Content    string
+	HTTPResp   http.Response
+	Body       io.ReadSeeker
 }
 
-// GetURL GET请求，将原结果返回
-func GetURLRaw(url string, timeout time.Duration) (ret []byte, err error) {
-	client := &http.Client{Timeout: timeout}
-	var resp *http.Response
-	resp, err = client.Get(url)
-	if err != nil {
-		return
+func (c Client) do(req *http.Request, timeout time.Duration, options []RequestOption) (resp Response, err error) {
+	// 处置不同的选项
+	var opts RequestOptions
+	for _, opt := range options {
+		opt(&opts)
 	}
-	defer resp.Body.Close()
-	if ret, err = io.ReadAll(resp.Body); err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("http status is %d,content is %s", resp.StatusCode, string(ret))
-	}
-	return
-}
-
-// PostURLWithUnmarshal POST请求，将返回内容存入提供的container
-func PostURLWithUnmarshal(url, contentType string, body io.Reader, timeout time.Duration, resultContainer interface{}) (err error) {
-	client := http.Client{Timeout: timeout}
-	var resp *http.Response
-	if resp, err = client.Post(url, contentType, body); err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	var ret []byte
-	if ret, err = io.ReadAll(resp.Body); err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("http status is %d,content is %s", resp.StatusCode, string(ret))
-	}
-	err = jsoniter.Unmarshal(ret, resultContainer)
-	return
-}
-
-// PostURL POST请求，将原结果返回
-func PostURLRaw(url, contentType string, body io.Reader, timeout time.Duration) (ret []byte, err error) {
-	client := &http.Client{Timeout: timeout}
-	var resp *http.Response
-	resp, err = client.Post(url, contentType, body)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	if ret, err = io.ReadAll(resp.Body); err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("http status is %d,content is %s", resp.StatusCode, string(ret))
-	}
-	return
-}
-
-// HTTPDo 完成请求，将原结果返回
-func HTTPDoRaw(req *http.Request, timeout time.Duration) (ret []byte, err error) {
-	client := &http.Client{Timeout: timeout}
-	var resp *http.Response
-	resp, err = client.Do(req)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	if ret, err = io.ReadAll(resp.Body); err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("http status is %d,content is %s", resp.StatusCode, string(ret))
-	}
-	return
-}
-
-// HTTPDoWithUnmarshal 完成请求，将返回内容存入提供的container
-func HTTPDoWithUnmarshal(req *http.Request, timeout time.Duration, resultContainer interface{}) (err error) {
-	client := &http.Client{Timeout: timeout}
-	var resp *http.Response
-	resp, err = client.Do(req)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	var ret []byte
-	if ret, err = io.ReadAll(resp.Body); err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("http status is %d,content is %s", resp.StatusCode, string(ret))
-	}
-	err = jsoniter.Unmarshal(ret, resultContainer)
-	return
-}
-
-// MakeParams GET请求,生成url参数
-func MakeParams(pmap map[string]string) (pstr string) {
-	p := url.Values{}
-	for k, v := range pmap {
-		if v != "" {
-			p.Add(k, v)
+	// client限流器
+	var originResp *http.Response
+	if c.limit {
+		if c.isBlockLimit {
+			if err = c.limiter.Wait(context.Background()); err != nil {
+				return
+			}
+		} else {
+			if ok := c.limiter.Allow(); !ok {
+				err = errors.New(`limit by client limiter`)
+				return
+			}
 		}
 	}
-	pstr = strings.Replace(p.Encode(), "+", "%20", -1)
+
+	// 请求限流器
+	if opts.AboutLimit.Limit {
+		if opts.AboutLimit.IsBlockLimit {
+			if err = opts.AboutLimit.Limiter.Wait(context.Background()); err != nil {
+				return
+			}
+		} else {
+			if ok := opts.AboutLimit.Limiter.Allow(); !ok {
+				err = errors.New(`limit by request limiter`)
+				return
+			}
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel() //及时释放ctx资源、断开连接
+	req = req.WithContext(ctx)
+	// 发起请求
+	if originResp, err = c.client.Do(req); err != nil {
+		return
+	}
+	defer originResp.Body.Close()
+	// 状态通用字段拷贝
+	resp.StatusCode = originResp.StatusCode
+	resp.Status = originResp.Status
+
+	// 备份原始body
+	var rawContent []byte
+	if rawContent, err = io.ReadAll(originResp.Body); err != nil {
+		return
+	}
+
+	// 开始处理不同的返回类型
+	if opts.AboutResponce.HTTPResp {
+		resp.HTTPResp = *originResp
+		resp.HTTPResp.Body = io.NopCloser(bytes.NewBuffer(rawContent))
+	}
+
+	if opts.AboutResponce.CheckCode {
+		if resp.StatusCode != http.StatusOK {
+			resp.Content = string(rawContent)
+			err = fmt.Errorf("http status code: %d (%s)", originResp.StatusCode, originResp.Status)
+			return
+		}
+	}
+
+	if opts.AboutResponce.BytesResp {
+		resp.RawContent = rawContent
+	}
+
+	if opts.AboutResponce.ReaderResp {
+		resp.Body = bytes.NewReader(rawContent)
+	}
+
+	if opts.AboutResponce.Unmarshal {
+		if err = jsoniter.Unmarshal(rawContent, opts.AboutResponce.UnmarshalContainer); err != nil {
+			return
+		}
+	}
+
+	if opts.AboutResponce.StringResp {
+		resp.Content = string(rawContent)
+	}
 	return
 }
 
-func MakeBody(param interface{}) (body io.Reader, err error) {
-	var data []byte
-	if data, err = jsoniter.Marshal(param); err != nil {
+func (c Client) Do(req *http.Request, timeout time.Duration, options ...RequestOption) (resp Response, err error) {
+	resp, err = c.do(req, timeout, options)
+	return
+}
+func (c Client) GetURL(URL string, timeout time.Duration, options ...RequestOption) (resp Response, err error) {
+	req, err := http.NewRequest(http.MethodGet, URL, nil)
+	if err != nil {
 		return
-	} else {
-		body = bytes.NewBuffer(data)
 	}
+	resp, err = c.do(req, timeout, options)
+	return
+}
+
+func (c Client) PostURL(URL string, body io.Reader, timeout time.Duration, options ...RequestOption) (resp Response, err error) {
+	req, err := http.NewRequest(http.MethodPost, URL, body)
+	if err != nil {
+		return
+	}
+	resp, err = c.do(req, timeout, options)
 	return
 }
