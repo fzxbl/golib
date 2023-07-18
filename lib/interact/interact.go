@@ -2,6 +2,7 @@ package interact
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -9,9 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eiannone/keyboard"
 	"github.com/sqweek/dialog"
 )
 
+// ListenInput 等待用户输入，并打印用户输入到标准输出
 func ListenInput() (input string, err error) {
 	inputReader := bufio.NewReader(os.Stdin)
 	input, err = inputReader.ReadString('\n')
@@ -19,6 +22,7 @@ func ListenInput() (input string, err error) {
 		return
 	}
 	input = strings.TrimSpace(input)
+	fmt.Println("你的输入为:", input)
 	return
 }
 
@@ -42,4 +46,32 @@ func BlockOnSignal() {
 	log.Print("程序1s后退出...")
 	time.Sleep(time.Second)
 	os.Exit(0)
+}
+
+// NeedConfirm 打印引导文本，使程序停下来等待用户确认
+func NeedConfirm() bool {
+	if err := keyboard.Open(); err != nil {
+		fmt.Println(err)
+		return false
+	}
+	fmt.Printf("按Enter继续，ESC退出...")
+	for {
+		_, key, err := keyboard.GetKey()
+		if err != nil {
+			fmt.Println(err)
+			return false
+		}
+
+		if key == keyboard.KeyEnter {
+			// 程序开始
+			keyboard.Close()
+			break
+		} else if key == keyboard.KeyEsc {
+			keyboard.Close()
+			os.Exit(0)
+			return false
+		}
+	}
+
+	return true
 }

@@ -7,6 +7,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/fzxbl/golib/lib/ilimit"
 	"golang.org/x/net/publicsuffix"
@@ -28,9 +29,10 @@ type InitCookie struct {
 type ClientOptions struct {
 	UseCookie    bool           //是否开启Cookie支持
 	InitCookie   *InitCookie    //是否使用已有Cookie初始化，默认为空
-	Limit        bool           //是否限流，默认为false
 	Limiter      ilimit.Limiter //限流，默认为空
 	IsBlockLimit bool           // 拿不到令牌时是否阻塞，直到拿到令牌
+	Timeout      time.Duration
+	Transport    http.RoundTripper
 }
 
 type ClientOption func(opts *ClientOptions)
@@ -70,14 +72,19 @@ func (i InitCookie) initCookie() (jar *cookiejar.Jar) {
 }
 func NewClient(options ...ClientOption) (c Client) {
 	c.client = &http.Client{}
-	if debug {
-		c.client.Transport = &debugRoundTripper{http.DefaultTransport}
-	}
-
 	var opts ClientOptions
 	for _, option := range options {
 		option(&opts)
 	}
+	if opts.Limiter != nil {
+		c.limit = true
+		c.limiter = opts.Limiter
+		c.isBlockLimit = opts.IsBlockLimit
+	}
+	if opts.Transport != nil {
+		c.client.Transport = opts.Transport
+	}
+
 	if opts.UseCookie {
 		if opts.InitCookie != nil {
 			cookieJar := opts.InitCookie.initCookie()
@@ -90,12 +97,11 @@ func NewClient(options ...ClientOption) (c Client) {
 			c.client.Jar = cookieJar
 		}
 	}
-	if opts.Limit {
-		c.limit = true
-		c.limiter = opts.Limiter
-		c.isBlockLimit = opts.IsBlockLimit
 
+	if opts.Timeout > 0 {
+		c.client.Timeout = opts.Timeout
 	}
+
 	return
 }
 
@@ -113,10 +119,23 @@ func WithClientLimiter(limiter ilimit.Limiter, isBlockRequest bool) ClientOption
 		if limiter != nil {
 			opts.Limiter = limiter
 		} else {
-			panic(errors.New(`limiter cannot be nil`))
+			panic(errors.New(`limiter can not be nil`))
 		}
-		opts.Limit = true
 		opts.IsBlockLimit = isBlockRequest
+	}
+}
 
+func WithTimeout(timeout time.Duration) ClientOption {
+	return func(opts *ClientOptions) {
+		opts.Timeout = timeout
+	}
+}
+
+func WithCustomTransport(transport http.RoundTripper) ClientOption {
+	return func(opts *ClientOptions) {
+		if transport == nil {
+			panic(errors.New(`transport can not be nil`))
+		}
+		opts.Transport = transport
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-type Message struct {
+type message struct {
 	From    string
 	To      string
 	Subject string
@@ -17,8 +17,8 @@ type Message struct {
 	Body    string
 }
 
-func (m Message) CreateRFC2822Message() (msgInRFC2822 string) {
-	m.Date = time.Now().Format(time.RFC1123) //.Local().Format(time.DateTime)
+func (m message) createRFC2822Message() (msgInRFC2822 string) {
+	m.Date = time.Now().Local().Format(time.RFC1123)
 	var templ *template.Template
 	templ, _ = template.New("email").Parse(`
 From: {{.From}}
@@ -48,11 +48,12 @@ Date: {{.Date}}
 	return
 }
 
-func (m Message) CreateGoMailMessage() (msg *gomail.Message) {
+func (m message) createGoMailMessage() (msg *gomail.Message) {
 	msg = gomail.NewMessage()
 	msg.SetHeader("From", m.From)
 	msg.SetHeader("To", m.To)
 	msg.SetHeader("Subject", m.Subject)
 	msg.SetBody("text/html", m.Body)
+	msg.SetDateHeader("Date", time.Now())
 	return
 }

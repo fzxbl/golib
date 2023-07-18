@@ -1,8 +1,10 @@
 package iutil
 
 import (
+	"bytes"
 	"log"
 	"net/http"
+	"text/template"
 	"time"
 
 	"github.com/fzxbl/golib/lib/interact"
@@ -29,4 +31,18 @@ func BlockIfExpired(year, month, day, hour int) {
 		log.Print("时间过期，请联系开发者")
 		interact.BlockOnSignal()
 	}
+}
+
+func TemplateReplace(temp string, data any) (result string, err error) {
+	tmpl, err := template.New("test").Parse(temp)
+	if err != nil {
+		return
+	}
+	var tmplBytes bytes.Buffer
+	err = tmpl.Execute(&tmplBytes, data)
+	if err != nil {
+		return
+	}
+	result = tmplBytes.String()
+	return
 }
