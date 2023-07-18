@@ -6,13 +6,13 @@ import (
 )
 
 func Test_CreateEmail(t *testing.T) {
-	m := Message{
+	m := message{
 		From:    "alice@example.com",
 		To:      "bob@example.com",
 		Subject: "Hello",
 		Body:    "Hello, I hope you are doing well.",
 	}
-	msg := m.CreateRFC2822Message()
+	msg := m.createRFC2822Message()
 
 	fmt.Println(msg)
 }

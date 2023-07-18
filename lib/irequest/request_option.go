@@ -8,7 +8,8 @@ import (
 
 type AboutResponce struct {
 	// 检查返回状态码，不为200时，返回错误信息
-	CheckCode bool
+	CheckCode  bool
+	TargetCode int
 	// 是否将返回解析为对象
 	Unmarshal bool
 	// unmarshal的目标对象
@@ -73,6 +74,14 @@ func WithByteResp() RequestOption {
 func WithStringResp() RequestOption {
 	return func(opts *RequestOptions) {
 		opts.StringResp = true
+	}
+}
+
+// WithCheckCode 返回时立刻检查状态码，不为code时，返回错误
+func WithCheckCode(code int) RequestOption {
+	return func(opts *RequestOptions) {
+		opts.CheckCode = true
+		opts.TargetCode = code
 	}
 }
 

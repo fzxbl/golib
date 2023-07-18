@@ -73,18 +73,18 @@ func (c Client) do(req *http.Request, timeout time.Duration, options []RequestOp
 		return
 	}
 
+	// 检查返回状态码
+	if opts.AboutResponce.CheckCode {
+		if resp.StatusCode != opts.TargetCode {
+			err = fmt.Errorf("status code not match. expected: %d actual: %d", opts.TargetCode, resp.StatusCode)
+			resp.Content = string(rawContent)
+			return
+		}
+	}
 	// 开始处理不同的返回类型
 	if opts.AboutResponce.HTTPResp {
 		resp.HTTPResp = *originResp
 		resp.HTTPResp.Body = io.NopCloser(bytes.NewBuffer(rawContent))
-	}
-
-	if opts.AboutResponce.CheckCode {
-		if resp.StatusCode != http.StatusOK {
-			resp.Content = string(rawContent)
-			err = fmt.Errorf("http status code: %d (%s)", originResp.StatusCode, originResp.Status)
-			return
-		}
 	}
 
 	if opts.AboutResponce.BytesResp {

@@ -9,27 +9,14 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-type Server struct {
-	Adress string
-	Port   int
-	UseTLS bool
+type Client struct {
+	smtpClient *gomail.Dialer
+	imapClient *imapclient.Client
+	Config     Config
 }
 
-type Auth struct {
-	User   string
-	Passwd string
-}
-
-type MailBox struct {
-	SentBox string
-	InBox   string
-}
-
-type Config struct {
-	SendServer    Server
-	ReceiveServer Server
-	Auth          Auth
-	MailBox       MailBox
+type Options struct {
+	ClientMode ClientMode
 }
 type ClientMode uint8
 
@@ -42,18 +29,40 @@ const (
 	ClientModeReceiveAndSend ClientMode = iota + 1
 )
 
-func (cli *Client) MustInit(confPath string, mode ClientMode) {
+type Option func(opts *Options)
+
+func WithMode(mode ClientMode) Option {
+	return func(opts *Options) {
+		opts.ClientMode = mode
+	}
+}
+
+func NewClient(confPath string, options ...Option) *Client {
+	var opts Options
+	for _, option := range options {
+		option(&opts)
+	}
+
+	cli := &Client{}
 	var cfg Config
 	iconf.MustParseToml(confPath, &cfg)
-	cli.cfg = cfg
-	if mode&1 == 1 {
+	cli.Config = cfg
+
+	if opts.ClientMode == 0 {
 		imapCli := mustInitImap(cfg)
 		cli.imapClient = imapCli
-	}
-	if mode&2 == 1 {
 		smtpClient := mustInitSmtp(cfg)
 		cli.smtpClient = smtpClient
 	}
+	if opts.ClientMode&1 == 1 {
+		imapCli := mustInitImap(cfg)
+		cli.imapClient = imapCli
+	}
+	if opts.ClientMode&2 == 1 {
+		smtpClient := mustInitSmtp(cfg)
+		cli.smtpClient = smtpClient
+	}
+	return cli
 }
 
 // mustInitSmtp 初始化SMTP服务，使用gomail.NewMessage()构造msg,使用client.DialAndSend(msg)发送

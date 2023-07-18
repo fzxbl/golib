@@ -2,6 +2,7 @@ package interact
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -9,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eiannone/keyboard"
 	"github.com/sqweek/dialog"
 )
 
@@ -42,4 +44,30 @@ func BlockOnSignal() {
 	log.Print("程序1s后退出...")
 	time.Sleep(time.Second)
 	os.Exit(0)
+}
+
+func ConfirmStart() bool {
+	if err := keyboard.Open(); err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	for {
+		_, key, err := keyboard.GetKey()
+		if err != nil {
+			fmt.Println(err)
+			return false
+		}
+
+		if key == keyboard.KeyEnter {
+			// 程序开始
+			keyboard.Close()
+			break
+		} else if key == keyboard.KeyEsc {
+			keyboard.Close()
+			return false
+		}
+	}
+
+	return true
 }

@@ -1,29 +1,29 @@
 package iemail
 
-import (
-	"fmt"
+import "fmt"
 
-	"github.com/emersion/go-imap/v2/imapclient"
-	"gopkg.in/gomail.v2"
-)
-
-type Client struct {
-	smtpClient *gomail.Dialer
-	imapClient *imapclient.Client
-	cfg        Config
+func (c Client) Send(to string, subject string, content string, syncSentBox bool) (err error) {
+	m := message{
+		From:    c.Config.Auth.User,
+		To:      to,
+		Subject: subject,
+		Body:    content,
+	}
+	err = c.send(m, syncSentBox)
+	return
 }
 
-// Send syncSentBox是否同步到发件箱
-func (c Client) Send(m Message, syncSentBox bool) (err error) {
-	sendMsg := m.CreateGoMailMessage()
+// send syncSentBox是否同步到发件箱
+func (c Client) send(m message, syncSentBox bool) (err error) {
+	sendMsg := m.createGoMailMessage()
 	err = c.smtpClient.DialAndSend(sendMsg)
 	if err != nil || !syncSentBox || c.imapClient == nil {
 		return
 	}
 	defer c.imapClient.Logout()
-	archivedMsg := m.CreateRFC2822Message()
+	archivedMsg := m.createRFC2822Message()
 	data := []byte(archivedMsg)
-	appendCmd := c.imapClient.Append(c.cfg.MailBox.SentBox, int64(len(data)), nil)
+	appendCmd := c.imapClient.Append(c.Config.MailBox.SentBox, int64(len(data)), nil)
 	if _, err = appendCmd.Write(data); err != nil {
 		err = fmt.Errorf("failed to write message: %w", err)
 		return
