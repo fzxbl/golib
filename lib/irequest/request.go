@@ -98,6 +98,11 @@ func (c Client) do1(req *http.Request, opts RequestOptions) (resp Response, err 
 			return
 		}
 	}
+	// 开始处理不同的返回类型
+	if opts.AboutResponce.HTTPResp {
+		resp.HTTPResp = *originResp
+		resp.HTTPResp.Body = io.NopCloser(bytes.NewBuffer(rawContent))
+	}
 
 	// 开始处理不同的返回类型
 	if opts.AboutResponce.HTTPResp {
