@@ -35,7 +35,7 @@ type ClientOptions struct {
 	Transport    http.RoundTripper
 }
 
-type ClientOption func(opts *ClientOptions)
+type ClientOptionFunc func(opts *ClientOptions)
 
 func (i InitCookie) initCookie() (jar *cookiejar.Jar) {
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -70,7 +70,7 @@ func (i InitCookie) initCookie() (jar *cookiejar.Jar) {
 	jar.SetCookies(urlObj, cookies)
 	return
 }
-func NewClient(options ...ClientOption) (c Client) {
+func NewClient(options ...ClientOptionFunc) (c Client) {
 	c.client = &http.Client{}
 	var opts ClientOptions
 	for _, option := range options {
@@ -106,7 +106,7 @@ func NewClient(options ...ClientOption) (c Client) {
 }
 
 // WithCookie 开启Cookie支持,并使用initCookie初始化,initCookie为nil时，默认使用空的CookieJar
-func WithCookie(initCookie *InitCookie) ClientOption {
+func WithCookie(initCookie *InitCookie) ClientOptionFunc {
 	return func(opts *ClientOptions) {
 		opts.UseCookie = true
 		opts.InitCookie = initCookie
@@ -114,7 +114,7 @@ func WithCookie(initCookie *InitCookie) ClientOption {
 }
 
 // WithClientLimiter 限流，使用该Client的所有请求都会限流
-func WithClientLimiter(limiter ilimit.Limiter, isBlockRequest bool) ClientOption {
+func WithClientLimiter(limiter ilimit.Limiter, isBlockRequest bool) ClientOptionFunc {
 	return func(opts *ClientOptions) {
 		if limiter != nil {
 			opts.Limiter = limiter
@@ -125,13 +125,14 @@ func WithClientLimiter(limiter ilimit.Limiter, isBlockRequest bool) ClientOption
 	}
 }
 
-func WithTimeout(timeout time.Duration) ClientOption {
+// WithClientTimeout 设置请求超时时间，使用该Client的所有请求都会设置该超时
+func WithClientTimeout(timeout time.Duration) ClientOptionFunc {
 	return func(opts *ClientOptions) {
 		opts.Timeout = timeout
 	}
 }
 
-func WithCustomTransport(transport http.RoundTripper) ClientOption {
+func WithCustomTransport(transport http.RoundTripper) ClientOptionFunc {
 	return func(opts *ClientOptions) {
 		if transport == nil {
 			panic(errors.New(`transport can not be nil`))

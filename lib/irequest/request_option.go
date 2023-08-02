@@ -2,6 +2,7 @@ package irequest
 
 import (
 	"errors"
+	"time"
 
 	"github.com/fzxbl/golib/lib/ilimit"
 )
@@ -33,11 +34,13 @@ type AboutLimit struct {
 type RequestOptions struct {
 	AboutResponce
 	AboutLimit
+	RetryCount int
+	Timeout    time.Duration
 }
-type RequestOption func(opts *RequestOptions)
+type RequestOptionFunc func(opts *RequestOptions)
 
 // WithUnmarshalResp 将返回结果解析为对象
-func WithUnmarshalResp(container interface{}) RequestOption {
+func WithUnmarshalResp(container interface{}) RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		if container != nil {
 			opts.Unmarshal = true
@@ -50,35 +53,35 @@ func WithUnmarshalResp(container interface{}) RequestOption {
 }
 
 // WithHTTPResp 返回http.Response，但是不需要自己调用resp.Body.Close()
-func WithHTTPResp() RequestOption {
+func WithHTTPResp() RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		opts.HTTPResp = true
 	}
 }
 
 // WithReaderResp 返回一个Reader对象，放入Response.Body
-func WithReaderResp() RequestOption {
+func WithReaderResp() RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		opts.ReaderResp = true
 	}
 }
 
 // WithBytesResp 返回一个[]byte对象，放入Response.RawContent
-func WithByteResp() RequestOption {
+func WithByteResp() RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		opts.BytesResp = true
 	}
 }
 
 // WithStringResp 返回一个string对象，放入Response.Content
-func WithStringResp() RequestOption {
+func WithStringResp() RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		opts.StringResp = true
 	}
 }
 
 // WithCheckCode 返回时立刻检查状态码，不为code时，返回错误
-func WithCheckCode(code int) RequestOption {
+func WithCheckCode(code int) RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		opts.CheckCode = true
 		opts.TargetCode = code
@@ -86,10 +89,24 @@ func WithCheckCode(code int) RequestOption {
 }
 
 // WithLimiter 请求是否使用限流器
-func WithLimiter(limiter ilimit.Limiter, isBlockRequest bool) RequestOption {
+func WithLimiter(limiter ilimit.Limiter, isBlockRequest bool) RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		opts.Limit = true
 		opts.IsBlockLimit = isBlockRequest
 		opts.Limiter = limiter
+	}
+}
+
+// WithRetry 请求重试次数
+func WithRetry(retryCount int) RequestOptionFunc {
+	return func(opts *RequestOptions) {
+		opts.RetryCount = retryCount
+	}
+}
+
+// WithRequestTimeout 请求重试次数
+func WithRequestTimeout(timeout time.Duration) RequestOptionFunc {
+	return func(opts *RequestOptions) {
+		opts.Timeout = timeout
 	}
 }

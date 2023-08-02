@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	jsoniter "github.com/json-iterator/go"
 )
@@ -21,12 +20,23 @@ type Response struct {
 	Body       io.ReadSeeker
 }
 
-func (c Client) do(req *http.Request, timeout time.Duration, options []RequestOption) (resp Response, err error) {
+func (c Client) do(req *http.Request, options []RequestOptionFunc) (resp Response, err error) {
 	// 处置不同的选项
 	var opts RequestOptions
 	for _, opt := range options {
 		opt(&opts)
 	}
+	for i := 0; i <= opts.RetryCount; i++ {
+		resp, err = c.do1(req, opts)
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func (c Client) do1(req *http.Request, opts RequestOptions) (resp Response, err error) {
 	// client限流器
 	var originResp *http.Response
 	if c.limit {
@@ -55,14 +65,21 @@ func (c Client) do(req *http.Request, timeout time.Duration, options []RequestOp
 			}
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel() //及时释放ctx资源、断开连接
-	req = req.WithContext(ctx)
+
+	var ctx context.Context
+	if opts.Timeout != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), opts.Timeout)
+		defer cancel() //及时释放ctx资源、断开连接
+		req = req.WithContext(ctx)
+	}
+
 	// 发起请求
 	if originResp, err = c.client.Do(req); err != nil {
 		return
 	}
 	defer originResp.Body.Close()
+
 	// 状态通用字段拷贝
 	resp.StatusCode = originResp.StatusCode
 	resp.Status = originResp.Status
@@ -81,6 +98,7 @@ func (c Client) do(req *http.Request, timeout time.Duration, options []RequestOp
 			return
 		}
 	}
+
 	// 开始处理不同的返回类型
 	if opts.AboutResponce.HTTPResp {
 		resp.HTTPResp = *originResp
@@ -107,24 +125,24 @@ func (c Client) do(req *http.Request, timeout time.Duration, options []RequestOp
 	return
 }
 
-func (c Client) Do(req *http.Request, timeout time.Duration, options ...RequestOption) (resp Response, err error) {
-	resp, err = c.do(req, timeout, options)
+func (c Client) Do(req *http.Request, options ...RequestOptionFunc) (resp Response, err error) {
+	resp, err = c.do(req, options)
 	return
 }
-func (c Client) GetURL(URL string, timeout time.Duration, options ...RequestOption) (resp Response, err error) {
+func (c Client) GetURL(URL string, options ...RequestOptionFunc) (resp Response, err error) {
 	req, err := http.NewRequest(http.MethodGet, URL, nil)
 	if err != nil {
 		return
 	}
-	resp, err = c.do(req, timeout, options)
+	resp, err = c.do(req, options)
 	return
 }
 
-func (c Client) PostURL(URL string, body io.Reader, timeout time.Duration, options ...RequestOption) (resp Response, err error) {
+func (c Client) PostURL(URL string, body io.Reader, options ...RequestOptionFunc) (resp Response, err error) {
 	req, err := http.NewRequest(http.MethodPost, URL, body)
 	if err != nil {
 		return
 	}
-	resp, err = c.do(req, timeout, options)
+	resp, err = c.do(req, options)
 	return
 }

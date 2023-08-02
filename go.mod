@@ -5,6 +5,7 @@ go 1.20
 require (
 	fyne.io/fyne/v2 v2.3.5
 	github.com/BurntSushi/toml v1.3.2
+	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/emersion/go-imap/v2 v2.0.0-alpha.6
 	github.com/glebarez/sqlite v1.9.0
 	github.com/json-iterator/go v1.1.12
@@ -24,7 +25,6 @@ require (
 	github.com/TheTitanrain/w32 v0.0.0-20200114052255-2654d97dbd3d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203 // indirect
 	github.com/emersion/go-sasl v0.0.0-20220912192320-0145f2c60ead // indirect
 	github.com/fredbi/uri v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

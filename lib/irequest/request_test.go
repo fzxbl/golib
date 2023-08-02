@@ -33,7 +33,7 @@ func Test_Request(t *testing.T) {
 	}
 	var data exampleResp
 	c := NewClient(WithCookie(&InitCookie{Host: "http://localhost:8080", Domain: ".localhost:8080", CookieHeader: "a=b=1;b=2"}))
-	resp, err := c.GetURL("http://localhost:8080", time.Second*5, WithUnmarshalResp(&data), WithByteResp(), WithHTTPResp(), WithReaderResp(), WithStringResp())
+	resp, err := c.GetURL("http://localhost:8080", WithUnmarshalResp(&data), WithByteResp(), WithHTTPResp(), WithReaderResp(), WithStringResp())
 	if err != nil {
 		fmt.Println(err)
 		return
