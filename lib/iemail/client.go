@@ -58,11 +58,18 @@ func NewClient(confPath string, options ...Option) *Client {
 		imapCli := mustInitImap(cfg)
 		cli.imapClient = imapCli
 	}
-	if opts.ClientMode&2 == 1 {
+	if opts.ClientMode&2 == 2 {
 		smtpClient := mustInitSmtp(cfg)
 		cli.smtpClient = smtpClient
 	}
 	return cli
+}
+
+func (cli *Client) Close() {
+	if cli.imapClient != nil {
+		cli.imapClient.Logout()
+	}
+
 }
 
 // mustInitSmtp 初始化SMTP服务，使用gomail.NewMessage()构造msg,使用client.DialAndSend(msg)发送

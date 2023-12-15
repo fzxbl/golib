@@ -40,6 +40,6 @@ func Test_Request(t *testing.T) {
 	}
 	fmt.Printf("%+v\n", resp)
 	fmt.Printf("%+v\n", data)
-	b, _ := io.ReadAll(resp.Body)
+	b, _ := io.ReadAll(resp.GetReaderResp())
 	fmt.Printf("%+v\n", string(b))
 }

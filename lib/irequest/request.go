@@ -11,23 +11,14 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-type Response struct {
-	Status     string
-	StatusCode int
-	RawContent []byte
-	Content    string
-	HTTPResp   http.Response
-	Body       io.ReadSeeker
-}
-
-func (c Client) do(req *http.Request, options []RequestOptionFunc) (resp Response, err error) {
+func (c Client) doWithRetry(req *http.Request, options []RequestOptionFunc) (resp IResponse, err error) {
 	// 处置不同的选项
 	var opts RequestOptions
 	for _, opt := range options {
 		opt(&opts)
 	}
 	for i := 0; i <= opts.RetryCount; i++ {
-		resp, err = c.do1(req, opts)
+		resp, err = c.do(req, opts)
 		if err != nil {
 			return
 		}
@@ -36,7 +27,7 @@ func (c Client) do(req *http.Request, options []RequestOptionFunc) (resp Respons
 	return
 }
 
-func (c Client) do1(req *http.Request, opts RequestOptions) (resp Response, err error) {
+func (c Client) do(req *http.Request, opts RequestOptions) (resp response, err error) {
 	// client限流器
 	var originResp *http.Response
 	if c.limit {
@@ -80,74 +71,70 @@ func (c Client) do1(req *http.Request, opts RequestOptions) (resp Response, err 
 	}
 	defer originResp.Body.Close()
 
+	var r response
+
 	// 状态通用字段拷贝
-	resp.StatusCode = originResp.StatusCode
-	resp.Status = originResp.Status
+	r.statusCode = originResp.StatusCode
+	r.status = originResp.Status
 
 	// 备份原始body
 	var rawContent []byte
 	if rawContent, err = io.ReadAll(originResp.Body); err != nil {
-		return
+		return r, err
 	}
 
 	// 检查返回状态码
-	if opts.AboutResponce.CheckCode {
-		if resp.StatusCode != opts.TargetCode {
-			err = fmt.Errorf("status code not match. expected: %d actual: %d", opts.TargetCode, resp.StatusCode)
-			resp.Content = string(rawContent)
-			return
+	if opts.ResponceOpt.CheckCode {
+		if r.statusCode != opts.TargetCode {
+			err = fmt.Errorf("status code not match. expected: %d actual: %d", opts.TargetCode, r.statusCode)
+			r.content = string(rawContent)
+			return r, err
 		}
 	}
 	// 开始处理不同的返回类型
-	if opts.AboutResponce.HTTPResp {
-		resp.HTTPResp = *originResp
-		resp.HTTPResp.Body = io.NopCloser(bytes.NewBuffer(rawContent))
+	if opts.ResponceOpt.HTTPResp {
+		r.httpResp = *originResp
+		r.httpResp.Body = io.NopCloser(bytes.NewBuffer(rawContent))
 	}
 
-	// 开始处理不同的返回类型
-	if opts.AboutResponce.HTTPResp {
-		resp.HTTPResp = *originResp
-		resp.HTTPResp.Body = io.NopCloser(bytes.NewBuffer(rawContent))
+	if opts.ResponceOpt.BytesResp {
+		r.rawContent = rawContent
 	}
 
-	if opts.AboutResponce.BytesResp {
-		resp.RawContent = rawContent
+	if opts.ResponceOpt.ReaderResp {
+		r.body = bytes.NewReader(rawContent)
 	}
 
-	if opts.AboutResponce.ReaderResp {
-		resp.Body = bytes.NewReader(rawContent)
-	}
-
-	if opts.AboutResponce.Unmarshal {
-		if err = jsoniter.Unmarshal(rawContent, opts.AboutResponce.UnmarshalContainer); err != nil {
-			return
+	if opts.ResponceOpt.Unmarshal {
+		if err = jsoniter.Unmarshal(rawContent, opts.ResponceOpt.UnmarshalContainer); err != nil {
+			return r, err
 		}
 	}
 
-	if opts.AboutResponce.StringResp {
-		resp.Content = string(rawContent)
+	if opts.ResponceOpt.StringResp {
+		r.content = string(rawContent)
 	}
-	return
+	return r, nil
 }
 
-func (c Client) Do(req *http.Request, options ...RequestOptionFunc) (resp Response, err error) {
-	resp, err = c.do(req, options)
+func (c Client) Do(req *http.Request, options ...RequestOptionFunc) (resp IResponse, err error) {
+	resp, err = c.doWithRetry(req, options)
 	return
 }
-func (c Client) GetURL(URL string, options ...RequestOptionFunc) (resp Response, err error) {
+func (c Client) GetURL(URL string, options ...RequestOptionFunc) (resp IResponse, err error) {
 	req, err := http.NewRequest(http.MethodGet, URL, nil)
 	if err != nil {
 		return
 	}
-	resp, err = c.do(req, options)
+	resp, err = c.doWithRetry(req, options)
 	return
 }
 
-func (c Client) PostURL(URL string, body io.Reader, options ...RequestOptionFunc) (resp Response, err error) {
+func (c Client) PostURL(URL string, body io.Reader, options ...RequestOptionFunc) (resp IResponse, err error) {
 	req, err := http.NewRequest(http.MethodPost, URL, body)
 	if err != nil {
 		return
 	}
-	resp, err = c.do(req, options)
+	resp, err = c.doWithRetry(req, options)
 	return
 }

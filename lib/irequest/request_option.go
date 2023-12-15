@@ -7,7 +7,7 @@ import (
 	"github.com/fzxbl/golib/lib/ilimit"
 )
 
-type AboutResponce struct {
+type ResponceOpt struct {
 	// 检查返回状态码，不为200时，返回错误信息
 	CheckCode  bool
 	TargetCode int
@@ -32,7 +32,7 @@ type AboutLimit struct {
 }
 
 type RequestOptions struct {
-	AboutResponce
+	ResponceOpt
 	AboutLimit
 	RetryCount int
 	Timeout    time.Duration
@@ -104,8 +104,8 @@ func WithRetry(retryCount int) RequestOptionFunc {
 	}
 }
 
-// WithRequestTimeout 请求重试次数
-func WithRequestTimeout(timeout time.Duration) RequestOptionFunc {
+// WithTimeout 请求超时时间
+func WithTimeout(timeout time.Duration) RequestOptionFunc {
 	return func(opts *RequestOptions) {
 		opts.Timeout = timeout
 	}
