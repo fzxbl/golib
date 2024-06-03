@@ -2,20 +2,23 @@ package iemail
 
 import "fmt"
 
-func (c Client) Send(to string, subject string, content string, syncSentBox bool) (err error) {
+func (c Client) Send(to string, subject string, content string, attachFileName string, syncSentBox bool) (err error) {
 	m := message{
 		From:    c.Config.Auth.User,
 		To:      to,
 		Subject: subject,
 		Body:    content,
 	}
-	err = c.send(m, syncSentBox)
+	err = c.send(m, attachFileName, syncSentBox)
 	return
 }
 
 // send syncSentBox是否同步到发件箱
-func (c Client) send(m message, syncSentBox bool) (err error) {
+func (c Client) send(m message, attachFileName string, syncSentBox bool) (err error) {
 	sendMsg := m.createGoMailMessage()
+	if attachFileName != "" {
+		sendMsg.Attach(attachFileName)
+	}
 	err = c.smtpClient.DialAndSend(sendMsg)
 	if err != nil || !syncSentBox || c.imapClient == nil {
 		return

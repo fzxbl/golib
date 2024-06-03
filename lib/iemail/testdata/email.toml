@@ -1,16 +1,16 @@
 [SendServer]
-Adress = "mail.xxx"
-Port = 25
-UseTLS = false
+Adress = "smtp.qq.com"
+Port = 465
+UseTLS = true
 
 [ReceiveServer]
-Adress = "mail.xxx"
+Adress = "imap.qq.com"
 Port = 993
 UseTLS = true
 
 [Auth]
-User = "xxx@example.com"
-Passwd = "xxxx"
+User = "xxx@yyy.com"
+Passwd = "zzz"
 
 [MailBox]
 SentBox = "发件箱"
